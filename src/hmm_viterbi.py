@@ -321,3 +321,34 @@ def evaluate_route_reconstruction(model, test_features, test_trip_data):
     print("=" * 80)
     
     return summary
+
+
+if __name__ == "__main__":
+    import joblib
+    from data_processing import process_all_trips_fast
+
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(PROJECT_ROOT)
+    
+    print("\n" + "=" * 80)
+    print("PATHSNAP: HMM & LOG-SPACE VITERBI SEQUENTIAL ROUTE RECONSTRUCTION")
+    print("=" * 80)
+    
+    model_path = "models/lgbm_tuned.pkl"
+    if not os.path.exists(model_path):
+        model_path = "models/lightgbm.pkl"
+        
+    if not os.path.exists(model_path):
+        print(f"Error: Model file {model_path} not found! Please run model training first.")
+        sys.exit(1)
+        
+    print(f"Loading trained classifier from {model_path}...")
+    model = joblib.load(model_path)
+    
+    print("Loading test features and metadata...")
+    test_features = pd.read_csv("results/test_features.csv")
+    _, test_meta = process_all_trips_fast("Student folder/student_test", max_candidates=15, verbose=False)
+    
+    print("\nDecoding trajectories and comparing Classifier-Only vs Classifier + HMM...")
+    summary = evaluate_route_reconstruction(model, test_features, test_meta)
+

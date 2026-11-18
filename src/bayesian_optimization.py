@@ -196,3 +196,44 @@ def compare_tuned_and_untuned(tuned_model, X_train, y_train, groups_train,
         json.dump(comparison, f, indent=2)
     
     return comparison
+
+
+if __name__ == "__main__":
+    from data_processing import process_all_trips_fast
+    from model_training import prepare_dataset
+
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(PROJECT_ROOT)
+    
+    print("\n" + "=" * 80)
+    print("PATHSNAP: BAYESIAN HYPERPARAMETER OPTIMIZATION (LIGHTGBM)")
+    print("=" * 80)
+    
+    if not os.path.exists("results/train_features.csv"):
+        print("Error: results/train_features.csv not found! Run python3 src/data_processing.py first.")
+        sys.exit(1)
+        
+    print("Loading training dataset...")
+    train_features = pd.read_csv("results/train_features.csv")
+    test_features = pd.read_csv("results/test_features.csv")
+    
+    print("Preparing GroupKFold features and labels...")
+    X_train, y_train, groups_train, _ = prepare_dataset(train_features)
+    
+    print("\nRunning Gaussian Process Bayesian Optimization across 9 hyperparameters...")
+    tuned_lgbm, best_params, opt_summary = run_bayesian_optimization(
+        X_train, y_train, groups_train, n_iter=10
+    )
+    
+    print("\nLoading test metadata for final evaluation...")
+    _, test_meta = process_all_trips_fast("Student folder/student_test", max_candidates=15, verbose=False)
+    
+    print("\nComparing Default vs Bayesian-Tuned LightGBM:")
+    comparison = compare_tuned_and_untuned(
+        tuned_lgbm, X_train, y_train, groups_train, test_features, test_meta
+    )
+    
+    print("\n" + "=" * 80)
+    print("BAYESIAN OPTIMIZATION COMPLETED SUCCESSFULLY!")
+    print("=" * 80)
+

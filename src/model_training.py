@@ -349,3 +349,34 @@ def train_and_evaluate_all(train_features, test_features, train_trip_data, test_
     print("=" * 80)
     
     return results_df, best_model_name
+
+
+if __name__ == "__main__":
+    from data_processing import process_all_trips_fast
+
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(PROJECT_ROOT)
+    
+    print("\n" + "=" * 80)
+    print("PATHSNAP: 6-MODEL BENCHMARK SUITE & GROUPKFOLD CROSS-VALIDATION")
+    print("=" * 80)
+    
+    if not (os.path.exists("results/train_features.csv") and os.path.exists("results/test_features.csv")):
+        print("Error: Feature files not found! Please run python3 src/data_processing.py first.")
+        sys.exit(1)
+        
+    print("Loading preprocessed candidate features...")
+    train_features = pd.read_csv("results/train_features.csv")
+    test_features = pd.read_csv("results/test_features.csv")
+    
+    print("Loading test trajectory metadata for Top-1 accuracy and route continuity...")
+    _, test_meta = process_all_trips_fast("Student folder/student_test", max_candidates=15, verbose=False)
+    
+    print("\nTraining and evaluating 6 models across 5 algorithm families...")
+    results_df, best_model_name = train_and_evaluate_all(
+        train_features, test_features, {}, test_meta
+    )
+    
+    print("\nConsolidated Performance Benchmark:")
+    print(results_df[['model', 'family', 'cv_f1_macro', 'test_f1_macro', 'top1_accuracy', 'route_continuity', 'test_log_loss', 'train_time']].to_string(index=False))
+

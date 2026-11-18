@@ -418,3 +418,46 @@ def dataset_summary(base_dir):
         })
     
     return pd.DataFrame(summary)
+
+
+if __name__ == "__main__":
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(PROJECT_ROOT)
+    
+    train_dir = "Student folder/train"
+    test_dir = "Student folder/student_test"
+    os.makedirs('results', exist_ok=True)
+    
+    print("\n" + "=" * 80)
+    print("PATHSNAP: DATA PROCESSING & VECTORIZED FEATURE ENGINEERING")
+    print("=" * 80)
+    
+    print("\n1. Generating Dataset Exploration Summaries...")
+    train_summary = dataset_summary(train_dir)
+    test_summary = dataset_summary(test_dir)
+    train_summary.to_csv("results/train_summary.csv", index=False)
+    test_summary.to_csv("results/test_summary.csv", index=False)
+    print(f"  Training Trips:  {len(train_summary)} trips ({train_summary['n_observations'].sum():,} GPS points)")
+    print(f"  Test Trips:      {len(test_summary)} trips ({test_summary['n_observations'].sum():,} GPS points)")
+    
+    print("\n2. Processing Trajectories & Engineering 15 Features...")
+    if os.path.exists("results/train_features.csv") and os.path.exists("results/test_features.csv"):
+        print("  Found existing preprocessed features on disk:")
+        train_features = pd.read_csv("results/train_features.csv")
+        test_features = pd.read_csv("results/test_features.csv")
+        print(f"  - Training Candidates: {len(train_features):,} rows across 15 features")
+        print(f"  - Test Candidates:     {len(test_features):,} rows across 15 features")
+        print("  (Delete results/train_features.csv to force full recomputation)")
+    else:
+        print("  Extracting candidates and 15 features for 80 training trips...")
+        train_features, _ = process_all_trips_fast(train_dir, max_candidates=15, verbose=True)
+        train_features.to_csv("results/train_features.csv", index=False)
+        print("  Extracting candidates and 15 features for 10 test trips...")
+        test_features, _ = process_all_trips_fast(test_dir, max_candidates=15, verbose=True)
+        test_features.to_csv("results/test_features.csv", index=False)
+        print(f"  Saved {len(train_features):,} train rows and {len(test_features):,} test rows.")
+    
+    print("\n" + "=" * 80)
+    print("DATA PROCESSING COMPLETED SUCCESSFULLY!")
+    print("=" * 80)
+

@@ -373,3 +373,54 @@ def create_folium_trajectory_map(trip_dir, trip_id, predictions_arcs=None,
     m.save(output_html)
     print(f"Interactive Folium map saved to: {output_html}")
     return output_html
+
+
+if __name__ == "__main__":
+    PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(PROJECT_ROOT)
+    
+    print("\n" + "=" * 80)
+    print("PATHSNAP: GEOSPATIAL VISUALIZATIONS & DIAGNOSTIC PLOTS GENERATOR")
+    print("=" * 80)
+    
+    os.makedirs('visualizations', exist_ok=True)
+    os.makedirs('visualizations/maps', exist_ok=True)
+    
+    print("\n1. Generating EDA distribution plots...")
+    if os.path.exists('results/train_summary.csv') and os.path.exists('results/test_summary.csv'):
+        plot_eda_summary('results/train_summary.csv', 'results/test_summary.csv')
+    else:
+        print("  Summary files not found, skipping EDA plots.")
+        
+    print("\n2. Generating Model Comparison benchmark charts...")
+    if os.path.exists('results/model_comparison.csv'):
+        plot_model_comparison('results/model_comparison.csv')
+    else:
+        print("  results/model_comparison.csv not found, skipping model charts.")
+        
+    print("\n3. Generating Bayesian Optimization convergence plots...")
+    if os.path.exists('results/bayesian_opt_trials.csv') and os.path.exists('results/tuned_vs_untuned.json'):
+        plot_bayesian_optimization_charts('results/bayesian_opt_trials.csv', 'results/tuned_vs_untuned.json')
+    else:
+        print("  Bayesian logs not found, skipping Bayesian plots.")
+        
+    print("\n4. Generating HMM sequential impact charts...")
+    if os.path.exists('results/hmm_comparison.json'):
+        plot_hmm_reconstruction_charts('results/hmm_comparison.json')
+    else:
+        print("  HMM results not found, skipping HMM charts.")
+        
+    print("\n5. Generating Interactive Folium HTML Maps...")
+    create_folium_trajectory_map(
+        'Student folder/student_test', '00000000',
+        output_html='visualizations/maps/test_trip_00000000_map.html'
+    )
+    create_folium_trajectory_map(
+        'Student folder/train', '00000001',
+        output_html='visualizations/maps/train_trip_00000001_map.html'
+    )
+    
+    print("\n" + "=" * 80)
+    print("ALL VISUALIZATIONS AND MAPS GENERATED SUCCESSFULLY!")
+    print("=" * 80)
+
