@@ -162,7 +162,25 @@ def plot_model_comparison(results_csv_path, output_dir='visualizations'):
     plt.tight_layout()
     plt.savefig(f'{output_dir}/model_computational_efficiency.png', dpi=200)
     plt.close()
-    print("Model comparison charts generated.")
+
+    # 6. Confusion Matrix Heatmaps (All 6 Models)
+    fig, axes = plt.subplots(2, 3, figsize=(15, 9))
+    axes = axes.flatten()
+    for idx, row in df.iterrows():
+        m_name = row['model']
+        cm_raw = eval(str(row['confusion_matrix']))
+        cm = np.array(cm_raw)
+        ax = axes[idx]
+        sns.heatmap(cm, annot=True, fmt='d', cmap='Blues', cbar=False, ax=ax,
+                    xticklabels=['Negative', 'Positive'], yticklabels=['Negative', 'Positive'])
+        ax.set_title(f"{m_name}\n(Macro F1: {row['test_f1_macro']:.4f})", fontsize=11, fontweight='bold')
+        ax.set_xlabel('Predicted Label')
+        ax.set_ylabel('True Label')
+    plt.suptitle('Confusion Matrices Across All 6 Models (Student-Test Partition)', fontsize=14, fontweight='bold')
+    plt.tight_layout()
+    plt.savefig(f'{output_dir}/model_confusion_matrices.png', dpi=200)
+    plt.close()
+    print("Model comparison charts & confusion matrices generated.")
 
 
 def plot_bayesian_optimization_charts(trials_csv_path, comparison_json_path, output_dir='visualizations'):
