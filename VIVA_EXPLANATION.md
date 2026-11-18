@@ -1,7 +1,14 @@
 # PathSnap - Master Viva & Evaluation Guide
 ### Complete Reference for Evaluators & Students (Simple Words, Deep Technical Detail)
 **Team Repository:** `PathSnap_693_694_697_698`  
-**Teammates:** Vineeth (`vineethpmural123-rgb`), Sudev (`sudevsuresh`), Siddesh (`siddeshvs351`), Uttam (`Uttam1916`)
+
+### Team Member Responsibilities & Technical Contributions
+| SRN / Roll No | Team Member | GitHub Username | Core Technical & Machine Learning Responsibilities |
+|---|---|---|---|
+| **693** | **Vineeth P Mural** | `vineethpmural123-rgb` | **Data Preprocessing & Spatial Indexing:** 2D Spatial Hash Grid (~300m cells, 64x candidate search acceleration, $O(1)$ spatial queries), Haversine spherical distance formulas, Candidate Generation (200m radius, Top-15), EDA distribution analysis. |
+| **694** | **Sudev Suresh** | `sudevsuresh` | **15-Feature Engineering & 6-Model Benchmark Suite:** Vectorized extraction of 15 kinematic/geometric features, training and evaluation across 6 distinct model families, 5-Fold `GroupKFold` cross-validation grouped by `trip_id` to strictly prevent data leakage. |
+| **697** | **Uttam K R** | `Uttam1916` | **Bayesian Optimization & HMM/Viterbi Sequential Decoder:** Gaussian Process Bayesian Optimization (`skopt.BayesSearchCV`) tuning 9 hyperparameters on LightGBM using Expected Improvement, mathematical formulation of HMM emission & transition matrices on road graph, Log-Space Viterbi dynamic programming recurrence algorithm, and sensor dropout gap handling (+5.14% accuracy gain, +5.21% continuity gain). |
+| **698** | **Siddesh V S** | `siddeshvs351` | **Two-Laptop Distributed Deployment & FastAPI Engine:** High-performance asynchronous FastAPI REST backend (`src/api.py`), server-side ground truth verification engine, interactive Folium geospatial rendering engine (`src/visualizations.py`), and the zero-dependency evaluator UI client (`src/ui.py`). |
 
 ---
 

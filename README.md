@@ -14,10 +14,10 @@ PathSnap is an end-to-end machine learning system that reconstructs realistic ve
 ## 2. Team Members & Contributions
 | Roll No / ID | GitHub Username | Key Contribution Area |
 |---|---|---|
-| **693** | `vineethpmural123-rgb` | Data Preprocessing, Spatial Grid Indexing, Vectorized Feature Engineering, EDA Distributions |
-| **694** | `sudevsuresh` | 6-Model Benchmark Suite, 5-Fold GroupKFold CV, Model Evaluation Metrics, Model Weights |
-| **697** | `siddeshvs351` | Bayesian Hyperparameter Optimization (`BayesSearchCV`), HMM & Log-Space Viterbi Sequential Route Decoder |
-| **698** | `Uttam1916` | Master Pipeline Orchestration, Interactive Folium Visualizations, Documentation & Viva Preparation |
+| **693** | `vineethpmural123-rgb` | Data Preprocessing, 2D Spatial Hash Grid Indexing (64x speedup), Haversine Distance Engine, Candidate Selection Pool |
+| **694** | `sudevsuresh` | 15-Feature Engineering, 6-Model Benchmark Suite, 5-Fold GroupKFold Cross-Validation, Metrics & Loss Formulation |
+| **697** | `Uttam1916` | Bayesian Hyperparameter Optimization (`BayesSearchCV`), HMM & Log-Space Viterbi Sequential Route Decoder Algorithm |
+| **698** | `siddeshvs351` | Two-Laptop Distributed Architecture, FastAPI Production REST Backend, Server-Side Evaluation Engine, Minimal UI Client |
 
 ---
 
