@@ -1,0 +1,164 @@
+[
+  {
+    "model": "Logistic Regression",
+    "family": "Linear and Probabilistic",
+    "config": "C=1.0, solver=lbfgs, class_weight=balanced, max_iter=500",
+    "cv_f1_macro": 0.7078274120398642,
+    "cv_f1_std": 0.008256892931382143,
+    "train_accuracy": 0.8732,
+    "test_accuracy": 0.8530273114949025,
+    "test_precision": 0.6327300537067405,
+    "test_recall": 0.8989034299618899,
+    "test_f1_macro": 0.6675378676117101,
+    "test_log_loss": 0.32637495477744116,
+    "top1_accuracy": 0.5946638765367512,
+    "route_continuity": 0.9192149988078112,
+    "train_time": 8.67152452468872,
+    "inference_time": 0.003828763961791992,
+    "confusion_matrix": [
+      [
+        217985,
+        39296
+      ],
+      [
+        752,
+        14453
+      ]
+    ]
+  },
+  {
+    "model": "KNN",
+    "family": "Instance-based",
+    "config": "k=7, weights=distance, metric=minkowski",
+    "cv_f1_macro": 0.8324942954063783,
+    "cv_f1_std": 0.03608875115117486,
+    "train_accuracy": 1.0,
+    "test_accuracy": 0.9575097436198557,
+    "test_precision": 0.7948094757766675,
+    "test_recall": 0.8190838509866725,
+    "test_f1_macro": 0.8063781300644859,
+    "test_log_loss": 0.4720202211023478,
+    "top1_accuracy": 0.5936175778184671,
+    "route_continuity": 0.920169031710049,
+    "train_time": 0.12148833274841309,
+    "inference_time": 14.031584739685059,
+    "confusion_matrix": [
+      [
+        250823,
+        6458
+      ],
+      [
+        5120,
+        10085
+      ]
+    ]
+  },
+  {
+    "model": "Random Forest",
+    "family": "Ensemble",
+    "config": "n_estimators=100, max_depth=12, max_samples=0.25, balanced",
+    "cv_f1_macro": 0.7972104180812105,
+    "cv_f1_std": 0.06528730639043234,
+    "train_accuracy": 0.95284,
+    "test_accuracy": 0.9332479466834993,
+    "test_precision": 0.7237591093260891,
+    "test_recall": 0.9302146919611108,
+    "test_f1_macro": 0.7856436166588698,
+    "test_log_loss": 0.20697103137363004,
+    "top1_accuracy": 0.6221815328276223,
+    "route_continuity": 0.939504188596804,
+    "train_time": 49.60806751251221,
+    "inference_time": 0.1746203899383545,
+    "confusion_matrix": [
+      [
+        240205,
+        17076
+      ],
+      [
+        1113,
+        14092
+      ]
+    ]
+  },
+  {
+    "model": "XGBoost",
+    "family": "Boosting",
+    "config": "n_estimators=150, max_depth=6, lr=0.1, tree_method=hist",
+    "cv_f1_macro": 0.8565052552274912,
+    "cv_f1_std": 0.03983985234016691,
+    "train_accuracy": 0.97752,
+    "test_accuracy": 0.963565100592324,
+    "test_precision": 0.8183597080501199,
+    "test_recall": 0.8605329435823474,
+    "test_f1_macro": 0.8379021004334852,
+    "test_log_loss": 0.09251068532466888,
+    "top1_accuracy": 0.6249542244310751,
+    "route_continuity": 0.9410318818413417,
+    "train_time": 0.5983459949493408,
+    "inference_time": 0.04667830467224121,
+    "confusion_matrix": [
+      [
+        251237,
+        6044
+      ],
+      [
+        3884,
+        11321
+      ]
+    ]
+  },
+  {
+    "model": "LightGBM",
+    "family": "Boosting",
+    "config": "n_estimators=200, max_depth=8, lr=0.1, subsample=0.8",
+    "cv_f1_macro": 0.8531303426612411,
+    "cv_f1_std": 0.045834127912901826,
+    "train_accuracy": 0.97538,
+    "test_accuracy": 0.9632604977870423,
+    "test_precision": 0.8163538163872551,
+    "test_recall": 0.8625065371842138,
+    "test_f1_macro": 0.8375784950880749,
+    "test_log_loss": 0.0952667891241707,
+    "top1_accuracy": 0.6211875490452524,
+    "route_continuity": 0.9359295851211215,
+    "train_time": 10.216055393218994,
+    "inference_time": 0.11260032653808594,
+    "confusion_matrix": [
+      [
+        251085,
+        6196
+      ],
+      [
+        3815,
+        11390
+      ]
+    ]
+  },
+  {
+    "model": "MLP Neural Network",
+    "family": "Neural Networks",
+    "config": "hidden=(64, 32), batch_size=512, early_stopping=True",
+    "cv_f1_macro": 0.8482481148245211,
+    "cv_f1_std": 0.03811110203104219,
+    "train_accuracy": 0.97026,
+    "test_accuracy": 0.9614879296551015,
+    "test_precision": 0.8119892422145988,
+    "test_recall": 0.8391669387736118,
+    "test_f1_macro": 0.8249096353593706,
+    "test_log_loss": 0.0981714128592581,
+    "top1_accuracy": 0.6099921527596128,
+    "route_continuity": 0.935605296291176,
+    "train_time": 3.3609769344329834,
+    "inference_time": 0.11346054077148438,
+    "confusion_matrix": [
+      [
+        251326,
+        5955
+      ],
+      [
+        4539,
+        10666
+      ]
+    ]
+  }
+]
