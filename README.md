@@ -91,7 +91,35 @@ pip install -r requirements.txt
 
 ## 5. How to Run the System
 
-### Run the Complete Pipeline End-to-End:
+### A. Two-Laptop Deployment Architecture (Evaluation Mode)
+According to the hackathon guidelines, the system runs across two machines on the same local network:
+
+#### On Laptop 1 (Model & FastAPI Backend):
+Hosts the trained LightGBM model, HMM/Viterbi engine, and server-side evaluation.
+```bash
+source venv/bin/activate
+python3 src/api.py
+# Server starts listening on http://0.0.0.0:8000
+```
+
+#### On Laptop 2 (Evaluator User Interface):
+1. **Web Interface (Recommended):** Open any browser and navigate to:
+   ```
+   http://<LAPTOP_1_IP>:8000
+   ```
+   (If running locally on a single machine, open `http://localhost:8000`).
+   - Select any of the 10 evaluation trips from the dropdown.
+   - Click **Evaluate Trip**.
+   - Displays real-time pointwise accuracy, route continuity, latency, and the embedded interactive Folium map.
+
+2. **Command-Line Interface:**
+   ```bash
+   python3 src/ui.py http://<LAPTOP_1_IP>:8000 [OPTIONAL_TRIP_ID]
+   ```
+
+---
+
+### B. Run the Complete Pipeline End-to-End:
 ```bash
 python3 src/run_pipeline.py
 ```

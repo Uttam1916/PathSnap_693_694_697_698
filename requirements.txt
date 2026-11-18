@@ -9,3 +9,5 @@ matplotlib
 scikit-optimize
 joblib
 seaborn
+fastapi
+uvicorn
