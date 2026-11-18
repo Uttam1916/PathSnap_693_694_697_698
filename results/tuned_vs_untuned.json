@@ -1,0 +1,26 @@
+{
+  "Untuned LightGBM": {
+    "cv_f1_macro": 0.854356862925303,
+    "cv_f1_std": 0.02695934630112846,
+    "test_accuracy": 0.9636091395521238,
+    "test_precision": 0.8174643123840641,
+    "test_recall": 0.8657233311197912,
+    "test_f1_macro": 0.8395821778614756,
+    "test_log_loss": 0.09372567453460459,
+    "top1_accuracy": 0.6214491237248234,
+    "route_continuity": 0.9369019918300456,
+    "inference_time": 0.16850709915161133
+  },
+  "Tuned LightGBM": {
+    "cv_f1_macro": 0.858455304534354,
+    "cv_f1_std": 0.027003990797875917,
+    "test_accuracy": 0.9634880324126744,
+    "test_precision": 0.8174814164549602,
+    "test_recall": 0.8627198495674904,
+    "test_f1_macro": 0.8383259439469712,
+    "test_log_loss": 0.09192196778502137,
+    "top1_accuracy": 0.6217630133403087,
+    "route_continuity": 0.9391070554920375,
+    "inference_time": 0.24444961547851562
+  }
+}

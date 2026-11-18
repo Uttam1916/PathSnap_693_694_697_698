@@ -1,0 +1,27 @@
+{
+  "best_params": {
+    "colsample_bytree": 0.9249583953429453,
+    "learning_rate": 0.030871492934032546,
+    "max_depth": 9,
+    "min_child_samples": 42,
+    "n_estimators": 231,
+    "num_leaves": 21,
+    "reg_alpha": 0.35602790034236675,
+    "reg_lambda": 1.2602707452763025,
+    "subsample": 0.9647715446027535
+  },
+  "best_cv_score": 0.8544258902264771,
+  "optimization_time_sec": 7.325527906417847,
+  "n_iterations": 10,
+  "search_spaces": {
+    "n_estimators": "Integer(low=100, high=350, prior='uniform', transform='normalize')",
+    "max_depth": "Integer(low=4, high=12, prior='uniform', transform='normalize')",
+    "learning_rate": "Real(low=0.02, high=0.25, prior='log-uniform', transform='normalize')",
+    "num_leaves": "Integer(low=15, high=75, prior='uniform', transform='normalize')",
+    "subsample": "Real(low=0.6, high=1.0, prior='uniform', transform='normalize')",
+    "colsample_bytree": "Real(low=0.6, high=1.0, prior='uniform', transform='normalize')",
+    "min_child_samples": "Integer(low=10, high=50, prior='uniform', transform='normalize')",
+    "reg_alpha": "Real(low=0.0001, high=5.0, prior='log-uniform', transform='normalize')",
+    "reg_lambda": "Real(low=0.0001, high=5.0, prior='log-uniform', transform='normalize')"
+  }
+}

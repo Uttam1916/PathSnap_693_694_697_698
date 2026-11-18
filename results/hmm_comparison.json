@@ -1,0 +1,116 @@
+{
+  "classifier_only": {
+    "avg_pointwise_accuracy": 0.7273459903176993,
+    "avg_route_continuity": 0.9391070554920375
+  },
+  "hmm_viterbi": {
+    "avg_pointwise_accuracy": 0.7786573449219943,
+    "avg_route_continuity": 0.9911691476602902
+  },
+  "improvements": {
+    "accuracy_gain": 0.051311354604295034,
+    "continuity_gain": 0.05206209216825264
+  },
+  "per_trip_details": [
+    {
+      "trip_id": "00000000",
+      "n_observations": 2458,
+      "classifier_accuracy": 0.7135882831570383,
+      "hmm_accuracy": 0.7286411716842962,
+      "accuracy_delta": 0.015052888527257946,
+      "classifier_continuity": 0.9658119658119658,
+      "hmm_continuity": 0.9898249898249898,
+      "continuity_delta": 0.024013024013023965
+    },
+    {
+      "trip_id": "00000007",
+      "n_observations": 1354,
+      "classifier_accuracy": 0.895864106351551,
+      "hmm_accuracy": 0.9645494830132939,
+      "accuracy_delta": 0.0686853766617429,
+      "classifier_continuity": 0.9940872135994088,
+      "hmm_continuity": 0.9977827050997783,
+      "continuity_delta": 0.003695491500369519
+    },
+    {
+      "trip_id": "00000009",
+      "n_observations": 1049,
+      "classifier_accuracy": 0.8169685414680649,
+      "hmm_accuracy": 0.8608198284080076,
+      "accuracy_delta": 0.04385128693994278,
+      "classifier_continuity": 0.9122137404580153,
+      "hmm_continuity": 0.9818702290076335,
+      "continuity_delta": 0.06965648854961826
+    },
+    {
+      "trip_id": "00000040",
+      "n_observations": 2995,
+      "classifier_accuracy": 0.8196994991652755,
+      "hmm_accuracy": 0.8557595993322203,
+      "accuracy_delta": 0.03606010016694483,
+      "classifier_continuity": 0.979625918503674,
+      "hmm_continuity": 0.9939879759519038,
+      "continuity_delta": 0.014362057448229826
+    },
+    {
+      "trip_id": "00000052",
+      "n_observations": 262,
+      "classifier_accuracy": 0.9312977099236641,
+      "hmm_accuracy": 0.9656488549618321,
+      "accuracy_delta": 0.03435114503816794,
+      "classifier_continuity": 0.9501915708812261,
+      "hmm_continuity": 0.9885057471264368,
+      "continuity_delta": 0.03831417624521072
+    },
+    {
+      "trip_id": "00000056",
+      "n_observations": 3958,
+      "classifier_accuracy": 0.1975745325922183,
+      "hmm_accuracy": 0.2054067710965134,
+      "accuracy_delta": 0.007832238504295097,
+      "classifier_continuity": 0.8956280010108668,
+      "hmm_continuity": 0.9929239322719232,
+      "continuity_delta": 0.0972959312610564
+    },
+    {
+      "trip_id": "00000065",
+      "n_observations": 768,
+      "classifier_accuracy": 0.7565104166666666,
+      "hmm_accuracy": 0.8203125,
+      "accuracy_delta": 0.06380208333333337,
+      "classifier_continuity": 0.924380704041721,
+      "hmm_continuity": 0.9986962190352021,
+      "continuity_delta": 0.0743155149934811
+    },
+    {
+      "trip_id": "00000076",
+      "n_observations": 1486,
+      "classifier_accuracy": 0.7651413189771198,
+      "hmm_accuracy": 0.8384925975773889,
+      "accuracy_delta": 0.07335127860026913,
+      "classifier_continuity": 0.9037037037037037,
+      "hmm_continuity": 0.9872053872053872,
+      "continuity_delta": 0.08350168350168352
+    },
+    {
+      "trip_id": "00000077",
+      "n_observations": 3911,
+      "classifier_accuracy": 0.5461518793147533,
+      "hmm_accuracy": 0.6647916133981079,
+      "accuracy_delta": 0.1186397340833546,
+      "classifier_continuity": 0.9639386189258312,
+      "hmm_continuity": 0.9969309462915601,
+      "continuity_delta": 0.03299232736572888
+    },
+    {
+      "trip_id": "00000091",
+      "n_observations": 874,
+      "classifier_accuracy": 0.8306636155606407,
+      "hmm_accuracy": 0.8821510297482837,
+      "accuracy_delta": 0.05148741418764302,
+      "classifier_continuity": 0.9014891179839634,
+      "hmm_continuity": 0.983963344788087,
+      "continuity_delta": 0.08247422680412364
+    }
+  ]
+}
