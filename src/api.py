@@ -2,6 +2,7 @@
 PathSnap - Evaluator API Backend & Interface
 Hosts the trained LightGBM model, HMM/Viterbi route reconstructor,
 and serves both REST API endpoints and the minimal evaluator UI.
+Strict Zero-Leakage Policy: Evaluator data is used purely for inference and evaluation.
 """
 
 import os
@@ -12,7 +13,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse, FileResponse
 from pydantic import BaseModel
@@ -39,39 +40,66 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Global model & reconstructor cache
+# Global paths & caching
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODEL_PATH = os.path.join(BASE_DIR, "models", "lgbm_tuned.pkl")
-STUDENT_TEST_DIR = os.path.join(BASE_DIR, "Student folder", "student_test")
-EVALUATOR_TEST_DIR = os.path.join(BASE_DIR, "Student folder", "evaluator_test")
-TRAIN_DIR = os.path.join(BASE_DIR, "Student folder", "train")
+
+# Path discovery for partitions
+if os.path.exists(os.path.join(BASE_DIR, "evaluator_test")):
+    EVALUATOR_TEST_DIR = os.path.join(BASE_DIR, "evaluator_test")
+else:
+    EVALUATOR_TEST_DIR = os.path.join(BASE_DIR, "Student folder", "evaluator_test")
+
+if os.path.exists(os.path.join(BASE_DIR, "Student folder", "student_test")):
+    STUDENT_TEST_DIR = os.path.join(BASE_DIR, "Student folder", "student_test")
+else:
+    STUDENT_TEST_DIR = os.path.join(BASE_DIR, "student_test")
+
+if os.path.exists(os.path.join(BASE_DIR, "Student folder", "train")):
+    TRAIN_DIR = os.path.join(BASE_DIR, "Student folder", "train")
+else:
+    TRAIN_DIR = os.path.join(BASE_DIR, "train")
+
 MAPS_DIR = os.path.join(BASE_DIR, "visualizations", "maps")
 os.makedirs(MAPS_DIR, exist_ok=True)
 
 MODEL = None
 RECONSTRUCTOR = None
+EVALUATION_CACHE = {}
 
 
 @app.on_event("startup")
 def load_artifacts():
     global MODEL, RECONSTRUCTOR
+    print("=" * 65)
+    print(" PATHSNAP DISTRIBUTED MAP-MATCHING SYSTEM — SERVER STARTUP")
+    print("=" * 65)
     print("Loading PathSnap model artifacts...")
     if os.path.exists(MODEL_PATH):
         MODEL = joblib.load(MODEL_PATH)
-        print(f"Loaded tuned model from {MODEL_PATH}")
+        print(f" [OK] Loaded tuned model from {MODEL_PATH}")
     elif os.path.exists(os.path.join(BASE_DIR, "models", "xgboost.pkl")):
         MODEL = joblib.load(os.path.join(BASE_DIR, "models", "xgboost.pkl"))
-        print("Fallback: Loaded XGBoost model")
+        print(" [OK] Fallback: Loaded XGBoost model")
     else:
-        print("Warning: No model file found in models/")
+        print(" [WARN] No model file found in models/")
     
     RECONSTRUCTOR = HMMRouteReconstructor()
-    print("HMM Route Reconstructor initialized.")
+    print(" [OK] HMM Route Reconstructor initialized.")
+    print(f" [OK] Evaluator test directory: {EVALUATOR_TEST_DIR}")
+    print(f" [OK] Student test directory:   {STUDENT_TEST_DIR}")
+    print("=" * 65)
 
 
 class EvaluateRequest(BaseModel):
     trip_id: str
     custom_dir: Optional[str] = None
+    force_refresh: Optional[bool] = False
+
+
+class BatchEvaluateRequest(BaseModel):
+    partition: Optional[str] = "evaluator_test"
+    force_refresh: Optional[bool] = False
 
 
 def find_trip_directory(trip_id: str, custom_dir: Optional[str] = None) -> tuple:
@@ -96,7 +124,7 @@ def find_trip_directory(trip_id: str, custom_dir: Optional[str] = None) -> tuple
     raise HTTPException(status_code=404, detail=f"Trip ID '{clean_id}' not found in any dataset partition.")
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health_check():
     """Health check endpoint confirming API readiness."""
     return {
@@ -112,9 +140,15 @@ def health_check():
 
 
 @app.get("/api/trips")
-def list_available_trips():
+def list_available_trips(partition: Optional[str] = Query(None)):
     """Lists available trip IDs for evaluator selection."""
-    if os.path.exists(EVALUATOR_TEST_DIR):
+    if partition == "student_test" and os.path.exists(STUDENT_TEST_DIR):
+        target_dir = STUDENT_TEST_DIR
+        partition_name = "student_test"
+    elif partition == "train" and os.path.exists(TRAIN_DIR):
+        target_dir = TRAIN_DIR
+        partition_name = "train"
+    elif os.path.exists(EVALUATOR_TEST_DIR):
         target_dir = EVALUATOR_TEST_DIR
         partition_name = "evaluator_test"
     else:
@@ -122,38 +156,31 @@ def list_available_trips():
         partition_name = "student_test"
     
     trips = sorted([d for d in os.listdir(target_dir) if os.path.isdir(os.path.join(target_dir, d))])
+    
+    available_parts = []
+    if os.path.exists(EVALUATOR_TEST_DIR):
+        available_parts.append("evaluator_test")
+    if os.path.exists(STUDENT_TEST_DIR):
+        available_parts.append("student_test")
+    if os.path.exists(TRAIN_DIR):
+        available_parts.append("train")
+        
     return {
         "partition": partition_name,
         "count": len(trips),
-        "trips": trips
+        "trips": trips,
+        "available_partitions": available_parts
     }
 
 
-@app.post("/api/evaluate")
-def evaluate_trip(req: EvaluateRequest):
-    """
-    Main evaluation pipeline endpoint:
-    1. Loads raw track, nodes, arcs
-    2. Generates candidates & 15 features
-    3. Runs classifier inference
-    4. Runs HMM/Viterbi route reconstruction
-    5. Calculates server-side accuracy & continuity
-    6. Generates interactive Folium map
-    """
+def _run_single_trip_inference(trip_dir: str, clean_id: str) -> dict:
+    """Internal helper to execute full pipeline inference on a trip."""
     t_start = time.time()
-    trip_dir, clean_id = find_trip_directory(req.trip_id, req.custom_dir)
-    
-    if MODEL is None:
-        raise HTTPException(status_code=500, detail="Prediction model is not loaded on server.")
     
     # 1. Feature generation
-    try:
-        features_df, meta = generate_trip_features(trip_dir, clean_id, max_candidates=15)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error generating features: {str(e)}")
-    
+    features_df, meta = generate_trip_features(trip_dir, clean_id, max_candidates=15)
     if len(features_df) == 0:
-        raise HTTPException(status_code=400, detail=f"No candidates generated for trip {clean_id}.")
+        raise HTTPException(status_code=400, detail=f"No candidate segments generated for trip {clean_id}.")
     
     # 2. Classifier inference
     X = features_df[FEATURE_COLS].values
@@ -171,13 +198,9 @@ def evaluate_trip(req: EvaluateRequest):
     obs_list = sorted(features_df['obs_idx'].unique())
     cands_by_obs = {}
     cls_probs_dict = {}
-    cls_best_preds = []
     
     for o in obs_list:
         grp = features_df[features_df['obs_idx'] == o]
-        best_row = grp.loc[grp['cls_prob'].idxmax()]
-        cls_best_preds.append(int(best_row['arc_id']))
-        
         cands_by_obs[int(o)] = [(int(r['arc_id']), float(r['distance'])) for _, r in grp.iterrows()]
         for _, r in grp.iterrows():
             cls_probs_dict[(int(o), int(r['arc_id']))] = float(r['cls_prob'])
@@ -231,20 +254,121 @@ def evaluate_trip(req: EvaluateRequest):
         if not compact_route or compact_route[-1] != aid:
             compact_route.append(aid)
     
-    return {
+    acc_val = round(accuracy * 100.0, 2) if accuracy is not None else None
+    cont_val = round(continuity * 100.0, 2)
+    
+    result = {
         "status": "success",
         "trip_id": clean_id,
+        "partition": os.path.basename(trip_dir),
         "n_observations": len(obs_list),
         "n_unique_arcs": len(compact_route),
-        "pointwise_accuracy": round(accuracy * 100.0, 2) if accuracy is not None else "N/A (No Ground Truth)",
-        "route_continuity": round(continuity * 100.0, 2),
+        "pointwise_accuracy": acc_val if acc_val is not None else "N/A (No Ground Truth)",
+        "route_continuity": cont_val,
         "processing_time_ms": round(elapsed_ms, 1),
         "predicted_route": compact_route,
         "map_url": f"/map/{clean_id}"
     }
+    return result
 
 
-@app.get("/map/{trip_id}", response_class=HTMLResponse)
+@app.post("/api/evaluate")
+def evaluate_trip(req: EvaluateRequest):
+    """
+    Main evaluation pipeline endpoint:
+    Processes requested trip, runs LightGBM + HMM route reconstruction,
+    computes server-side metrics, and logs live feedback to stdout.
+    """
+    trip_dir, clean_id = find_trip_directory(req.trip_id, req.custom_dir)
+    
+    if MODEL is None:
+        raise HTTPException(status_code=500, detail="Prediction model is not loaded on server.")
+    
+    # Check cache unless force_refresh is requested
+    cache_key = f"{clean_id}_{os.path.basename(trip_dir)}"
+    if not req.force_refresh and cache_key in EVALUATION_CACHE:
+        cached = EVALUATION_CACHE[cache_key].copy()
+        print(f"[CACHE HIT] Trip {clean_id} served in <1ms (Accuracy: {cached.get('pointwise_accuracy')}%, Continuity: {cached.get('route_continuity')}%)")
+        return cached
+
+    print(f"\n[EVALUATION REQUEST] Processing Trip: {clean_id} | Partition: {os.path.basename(trip_dir)}")
+    t0 = time.time()
+    
+    try:
+        result = _run_single_trip_inference(trip_dir, clean_id)
+        EVALUATION_CACHE[cache_key] = result
+        
+        print(f" -> Observations: {result['n_observations']} | Reconstructed Arcs: {result['n_unique_arcs']}")
+        print(f" -> Pointwise Accuracy: {result['pointwise_accuracy']}% | Route Continuity: {result['route_continuity']}%")
+        print(f" -> Latency: {result['processing_time_ms']} ms | Map: {result['map_url']}")
+        print(f"[COMPLETED] Trip {clean_id} evaluated successfully in {time.time() - t0:.2f}s\n")
+        return result
+    except Exception as e:
+        print(f"[ERROR] Evaluation failed for Trip {clean_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Pipeline evaluation error: {str(e)}")
+
+
+@app.post("/api/evaluate_all")
+def evaluate_all_trips(req: BatchEvaluateRequest):
+    """
+    Batch evaluation endpoint:
+    Runs inference sequentially across all trips in the partition and returns summary metrics.
+    """
+    if req.partition == "student_test" and os.path.exists(STUDENT_TEST_DIR):
+        target_dir = STUDENT_TEST_DIR
+        part_name = "student_test"
+    elif os.path.exists(EVALUATOR_TEST_DIR):
+        target_dir = EVALUATOR_TEST_DIR
+        part_name = "evaluator_test"
+    else:
+        target_dir = STUDENT_TEST_DIR
+        part_name = "student_test"
+        
+    trips = sorted([d for d in os.listdir(target_dir) if os.path.isdir(os.path.join(target_dir, d))])
+    print(f"\n[BATCH EVALUATION] Running batch inference across {len(trips)} trips in '{part_name}'...")
+    
+    results = []
+    accuracies = []
+    continuities = []
+    
+    for t in trips:
+        cache_key = f"{t}_{part_name}"
+        if not req.force_refresh and cache_key in EVALUATION_CACHE:
+            res = EVALUATION_CACHE[cache_key]
+        else:
+            res = _run_single_trip_inference(target_dir, t)
+            EVALUATION_CACHE[cache_key] = res
+        
+        results.append({
+            "trip_id": res["trip_id"],
+            "n_observations": res["n_observations"],
+            "n_unique_arcs": res["n_unique_arcs"],
+            "pointwise_accuracy": res["pointwise_accuracy"],
+            "route_continuity": res["route_continuity"],
+            "processing_time_ms": res["processing_time_ms"]
+        })
+        
+        if isinstance(res["pointwise_accuracy"], (int, float)):
+            accuracies.append(res["pointwise_accuracy"])
+        if isinstance(res["route_continuity"], (int, float)):
+            continuities.append(res["route_continuity"])
+            
+    mean_acc = round(float(np.mean(accuracies)), 2) if accuracies else None
+    mean_cont = round(float(np.mean(continuities)), 2) if continuities else None
+    
+    print(f"[BATCH COMPLETE] Partition: {part_name} | Mean Accuracy: {mean_acc}% | Mean Continuity: {mean_cont}%\n")
+    
+    return {
+        "status": "success",
+        "partition": part_name,
+        "total_trips": len(trips),
+        "mean_accuracy": mean_acc,
+        "mean_continuity": mean_cont,
+        "results": results
+    }
+
+
+@app.api_route("/map/{trip_id}", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def get_map(trip_id: str):
     """Serves the generated interactive Folium map for the trip."""
     clean_id = str(trip_id).zfill(8)
@@ -255,250 +379,40 @@ def get_map(trip_id: str):
     if not os.path.exists(map_path):
         map_path = os.path.join(MAPS_DIR, f"test_trip_{clean_id}_map.html")
     
+    # If still not found, generate the trajectory map dynamically
+    if not os.path.exists(map_path):
+        try:
+            trip_dir, clean_id = find_trip_directory(clean_id)
+            create_folium_trajectory_map(trip_dir, clean_id, predictions_arcs=None, output_html=map_path)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to generate map for trip {clean_id}: {str(e)}")
+    
     if os.path.exists(map_path):
         with open(map_path, "r", encoding="utf-8") as f:
-            return HTMLResponse(content=f.read())
+            content = f.read()
+        resp = HTMLResponse(content=content)
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        return resp
     
-    raise HTTPException(status_code=404, detail=f"Map for trip {clean_id} has not been generated yet.")
+    raise HTTPException(status_code=404, detail=f"Map for trip {clean_id} could not be loaded.")
 
 
-# Minimal, Clean, Distraction-Free Evaluator UI (No Gradients, No Emojis, Clean Neutral Design)
-HTML_UI = """<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PathSnap Evaluator Interface</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background-color: #f9fafb;
-      color: #111827;
-      line-height: 1.5;
-      padding: 24px;
-    }
-    .container { max-width: 1200px; margin: 0 auto; }
-    header {
-      border-bottom: 1px solid #e5e7eb;
-      padding-bottom: 16px;
-      margin-bottom: 24px;
-    }
-    h1 { font-size: 20px; font-weight: 600; color: #111827; }
-    .subtitle { font-size: 13px; color: #6b7280; margin-top: 4px; }
-    .card {
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      padding: 20px;
-      margin-bottom: 20px;
-    }
-    .form-group {
-      display: flex;
-      gap: 16px;
-      align-items: flex-end;
-      flex-wrap: wrap;
-    }
-    .form-item { flex: 1; min-width: 220px; }
-    label { display: block; font-size: 12px; font-weight: 500; color: #374151; margin-bottom: 6px; }
-    select, input, button {
-      width: 100%;
-      height: 38px;
-      padding: 0 12px;
-      font-size: 14px;
-      border: 1px solid #d1d5db;
-      border-radius: 4px;
-      background: #ffffff;
-      color: #111827;
-      outline: none;
-    }
-    select:focus, input:focus { border-color: #111827; }
-    button {
-      background-color: #111827;
-      color: #ffffff;
-      font-weight: 500;
-      border: none;
-      cursor: pointer;
-      width: auto;
-      min-width: 160px;
-    }
-    button:hover { background-color: #374151; }
-    button:disabled { background-color: #9ca3af; cursor: not-allowed; }
-    
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; }
-    .stat-box {
-      background: #ffffff;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      padding: 16px;
-    }
-    .stat-label { font-size: 11px; font-weight: 500; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-value { font-size: 24px; font-weight: 600; color: #111827; margin-top: 6px; }
-    
-    .map-container {
-      width: 100%;
-      height: 580px;
-      border: 1px solid #e5e7eb;
-      border-radius: 4px;
-      overflow: hidden;
-      background: #f3f4f6;
-    }
-    iframe { width: 100%; height: 100%; border: none; }
-    
-    .log-box {
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-      font-size: 12px;
-      background: #111827;
-      color: #f3f4f6;
-      padding: 16px;
-      border-radius: 4px;
-      overflow-x: auto;
-      max-height: 200px;
-    }
-    .status-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      font-size: 11px;
-      font-weight: 500;
-      border-radius: 3px;
-      background: #e5e7eb;
-      color: #374151;
-    }
-    .badge-ok { background: #dcfce7; color: #166534; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <h1>PathSnap: Map-Matching Evaluator System</h1>
-      <div class="subtitle">Distributed Trajectory snaps & sequential route reconstruction · Laptop 2 Interface</div>
-    </header>
-
-    <div class="card">
-      <div class="form-group">
-        <div class="form-item">
-          <label for="tripSelect">Select Evaluation Trip</label>
-          <select id="tripSelect">
-            <option value="">Loading available trips...</option>
-          </select>
-        </div>
-        <div class="form-item" style="max-width: 240px;">
-          <label for="manualTripId">Or Enter Trip ID</label>
-          <input type="text" id="manualTripId" placeholder="e.g. 00000000">
-        </div>
-        <div class="form-item" style="flex: none;">
-          <button id="evalBtn" onclick="runEvaluation()">Evaluate Trip</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="resultsSection" style="display: none;">
-      <div class="grid">
-        <div class="stat-box">
-          <div class="stat-label">Pointwise Accuracy</div>
-          <div class="stat-value" id="resAccuracy">--</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Route Continuity</div>
-          <div class="stat-value" id="resContinuity">--</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">GPS Observations</div>
-          <div class="stat-value" id="resObs">--</div>
-        </div>
-        <div class="stat-box">
-          <div class="stat-label">Latency (ms)</div>
-          <div class="stat-value" id="resTime">--</div>
-        </div>
-      </div>
-
-      <div class="card" style="padding: 0; overflow: hidden; margin-bottom: 20px;">
-        <div class="map-container">
-          <iframe id="mapFrame" src="about:blank"></iframe>
-        </div>
-      </div>
-
-      <div class="card">
-        <label style="margin-bottom: 8px;">Server Response & Decoded Route Preview</label>
-        <pre class="log-box" id="jsonOutput">// Evaluator API logs will appear here</pre>
-      </div>
-    </div>
-  </div>
-
-  <script>
-    const API_BASE = window.location.origin;
-
-    async function loadTrips() {
-      try {
-        const res = await fetch(`${API_BASE}/api/trips`);
-        const data = await res.json();
-        const sel = document.getElementById('tripSelect');
-        sel.innerHTML = '';
-        data.trips.forEach(t => {
-          const opt = document.createElement('option');
-          opt.value = t;
-          opt.textContent = `Trip ${t} (${data.partition})`;
-          sel.appendChild(opt);
-        });
-      } catch (err) {
-        document.getElementById('tripSelect').innerHTML = '<option value="00000000">00000000 (Default)</option>';
-      }
-    }
-
-    async function runEvaluation() {
-      const selectVal = document.getElementById('tripSelect').value;
-      const manualVal = document.getElementById('manualTripId').value.trim();
-      const tripId = manualVal || selectVal || "00000000";
-
-      const btn = document.getElementById('evalBtn');
-      btn.disabled = true;
-      btn.textContent = 'Processing...';
-
-      const resultsDiv = document.getElementById('resultsSection');
-      resultsDiv.style.display = 'block';
-
-      try {
-        const response = await fetch(`${API_BASE}/api/evaluate`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ trip_id: tripId })
-        });
-
-        const data = await response.json();
-        btn.disabled = false;
-        btn.textContent = 'Evaluate Trip';
-
-        if (!response.ok) {
-          alert('Evaluation error: ' + (data.detail || 'Server error'));
-          return;
-        }
-
-        document.getElementById('resAccuracy').textContent = typeof data.pointwise_accuracy === 'number' ? data.pointwise_accuracy + '%' : data.pointwise_accuracy;
-        document.getElementById('resContinuity').textContent = data.route_continuity + '%';
-        document.getElementById('resObs').textContent = data.n_observations.toLocaleString();
-        document.getElementById('resTime').textContent = data.processing_time_ms + ' ms';
-
-        document.getElementById('mapFrame').src = `${API_BASE}${data.map_url}`;
-        document.getElementById('jsonOutput').textContent = JSON.stringify(data, null, 2);
-
-      } catch (e) {
-        btn.disabled = false;
-        btn.textContent = 'Evaluate Trip';
-        alert('Network request failed: ' + e.message);
-      }
-    }
-
-    window.onload = loadTrips;
-  </script>
-</body>
-</html>
-"""
+# Minimal, Clean, Distraction-Free Evaluator UI (Loaded from src/ui.html)
+UI_HTML_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui.html")
 
 
-@app.get("/", response_class=HTMLResponse)
+@app.api_route("/", methods=["GET", "HEAD"], response_class=HTMLResponse)
 def serve_ui():
-    """Serves the evaluator user interface."""
-    return HTMLResponse(content=HTML_UI)
+    """Serves the evaluator user interface with no-cache headers."""
+    if os.path.exists(UI_HTML_PATH):
+        with open(UI_HTML_PATH, "r", encoding="utf-8") as f:
+            content = f.read()
+        resp = HTMLResponse(content=content)
+        resp.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        resp.headers["Pragma"] = "no-cache"
+        resp.headers["Expires"] = "0"
+        return resp
+    return HTMLResponse(content="<h1>PathSnap Evaluator Interface</h1><p>ui.html not found.</p>", status_code=404)
 
 
 if __name__ == "__main__":
