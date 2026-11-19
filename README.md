@@ -1,6 +1,5 @@
 # PathSnap: High-Performance Map-Matching & Sequential Route Reconstruction
 **Team Repository: `PathSnap_693_694_697_698`**
-
 ## 1. Overview
 PathSnap is an end-to-end machine learning system that reconstructs realistic vehicle trajectories by matching noisy, irregularly sampled GPS observations to road network segments. The system combines:
 1. **Vectorized Spatial Candidate Generation & Feature Engineering:** Sub-meter spatial grid indexing with 15 geometric, kinematic, and topological features.
